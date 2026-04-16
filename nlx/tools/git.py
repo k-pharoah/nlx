@@ -42,3 +42,28 @@ class GitPush(Tool):
 
     def execute(self, args):
         return subprocess.run(["git", "push"], capture_output=True, text=True)
+    
+
+class GitAddExcept(Tool):
+    name = "git.add_except"
+
+    def execute(self, args):
+        import subprocess
+
+        files = args["files"]
+
+        result = subprocess.run(
+            ["git", "ls-files"],
+            capture_output=True,
+            text=True
+        )
+
+        all_files = result.stdout.splitlines()
+
+        to_add = [f for f in all_files if f not in files]
+
+        return subprocess.run(
+            ["git", "add"] + to_add,
+            capture_output=True,
+            text=True
+        )

@@ -1,61 +1,75 @@
-from nlx.core.models import Plan, Step
-import re
+from dotenv import load_dotenv
+import os
+from pathlib import Path
 
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(env_path)
 
-def extract_message(text):
-    match = re.search(r"['\"](.+?)['\"]", text)
-    if match:
-        return match.group(1)
+from nlx.core.models import Plan
+from openai import OpenAI
+import json
 
-    if "message" in text:
-        return text.split("message")[-1].strip()
+client = OpenAI()
 
-    return "update"
+SYSTEM_PROMPT = """
+You convert natural language into a JSON execution plan.
 
+Allowed tools:
+- git.status()
+- git.create_branch(name: string)
+- git.add_all()
+- git.add_except(files: string[])
+- git.commit(message: string)
+- git.push()
 
-def extract_branch(text):
-    match = re.search(r"branch (?:called )?([^\s]+)", text)
-    return match.group(1) if match else "feature/test"
+Rules:
+- Output ONLY valid JSON
+- No explanations
+- Use exact tool names
+- Always return: { "intent": string, "steps": [...] }
+
+Examples:
+
+Input: "stage all, commit with message 'test', push"
+Output:
+{
+  "intent": "git.multi",
+  "steps": [
+    {"tool": "git.add_all", "args": {}},
+    {"tool": "git.commit", "args": {"message": "test"}},
+    {"tool": "git.push", "args": {}}
+  ]
+}
+
+Input: "stage all except app.py and config.json"
+Output:
+{
+  "intent": "git.multi",
+  "steps": [
+    {
+      "tool": "git.add_except",
+      "args": {"files": ["app.py", "config.json"]}
+    }
+  ]
+}
+"""
 
 
 def parse_command(command: str) -> Plan:
-    cmd = command.lower()
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": command}
+        ],
+        temperature=0
+    )
 
-    # normalize separators
-    cmd = cmd.replace(" and ", ",")
-    cmd = cmd.replace(" then ", ",")
+    content = response.choices[0].message.content
 
-    parts = [p.strip() for p in cmd.split(",") if p.strip()]
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        raise ValueError(f"Invalid JSON from LLM:\n{content}")
 
-    steps = []
-
-    for part in parts:
-        if "stage" in part or "add" in part:
-            steps.append(Step(tool="git.add_all", args={}))
-
-        elif "commit" in part:
-            steps.append(
-                Step(
-                    tool="git.commit",
-                    args={"message": extract_message(part)}
-                )
-            )
-
-        elif "push" in part:
-            steps.append(Step(tool="git.push", args={}))
-
-        elif "branch" in part:
-            steps.append(
-                Step(
-                    tool="git.create_branch",
-                    args={"name": extract_branch(part)}
-                )
-            )
-
-        elif "status" in part:
-            steps.append(Step(tool="git.status", args={}))
-
-    if not steps:
-        raise ValueError("Could not understand command")
-
-    return Plan(intent="git.multi", steps=steps)
+    return Plan(**data)
