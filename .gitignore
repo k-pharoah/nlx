@@ -39,5 +39,4 @@ htmlcov/
 # Ruff / lint caches
 .ruff_cache/
 
-# Local tool state (for nlx later)
 .nlx/
