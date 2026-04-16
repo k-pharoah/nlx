@@ -1,0 +1,10 @@
+[project]
+name = "nlx"
+version = "0.1.0"
+dependencies = [
+  "typer",
+  "pydantic",
+]
+
+[project.scripts]
+nlx = "nlx.main:app"
