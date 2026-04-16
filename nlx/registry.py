@@ -5,6 +5,7 @@ from nlx.tools.git import (
     GitAddExcept,
     GitCommit,
     GitPush,
+    GitUndoCommitKeepStaged
 )
 
 registry = {
@@ -14,6 +15,7 @@ registry = {
     "git.add_except": GitAddExcept(),
     "git.commit": GitCommit(),
     "git.push": GitPush(),
+    "git.undo_commit_keep_staged": GitUndoCommitKeepStaged()
 }
 
 empty = []

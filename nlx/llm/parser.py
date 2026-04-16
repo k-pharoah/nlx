@@ -30,6 +30,15 @@ Rules:
 
 Examples:
 
+Input: "undo last commit but keep changes staged"
+Output:
+{
+  "intent": "git.undo",
+  "steps": [
+    {"tool": "git.undo_commit_keep_staged", "args": {}}
+  ]
+}
+
 Input: "stage all, commit with message 'test', push"
 Output:
 {
@@ -53,8 +62,6 @@ Output:
   ]
 }
 """
-
-
 
 def parse_command(command: str) -> Plan:
     response = client.chat.completions.create(

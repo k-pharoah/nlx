@@ -75,3 +75,15 @@ class GitAddExcept(Tool):
             capture_output=True,
             text=True
         )
+    
+class GitUndoCommitKeepStaged(Tool):
+    name = "git.undo_commit_keep_staged"
+
+    def execute(self, args):
+        import subprocess
+
+        return subprocess.run(
+            ["git", "reset", "--soft", "HEAD~1"],
+            capture_output=True,
+            text=True
+        )
