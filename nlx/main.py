@@ -16,6 +16,7 @@ def run(command: str, execute: bool = False):
     validate_plan(plan)
 
     if not execute:
+        typer.echo("\n[DRY RUN]")
         confirm = typer.confirm("Execute?")
         if not confirm:
             typer.echo("Aborted")
@@ -25,6 +26,3 @@ def run(command: str, execute: bool = False):
 
 def main():
     app()
-
-if __name__ == "__main__":
-    main()

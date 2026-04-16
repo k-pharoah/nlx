@@ -1,36 +1,59 @@
 from nlx.core.models import Plan, Step
+import re
+
+
+def extract_message(text):
+    match = re.search(r"['\"](.+?)['\"]", text)
+    if match:
+        return match.group(1)
+
+    if "message" in text:
+        return text.split("message")[-1].strip()
+
+    return "update"
+
+
+def extract_branch(text):
+    match = re.search(r"branch (?:called )?([^\s]+)", text)
+    return match.group(1) if match else "feature/test"
+
 
 def parse_command(command: str) -> Plan:
     cmd = command.lower()
 
+    # normalize separators
+    cmd = cmd.replace(" and ", ",")
+    cmd = cmd.replace(" then ", ",")
+
+    parts = [p.strip() for p in cmd.split(",") if p.strip()]
+
     steps = []
 
-    if "status" in cmd:
-        steps.append(Step(tool="git.status", args={}))
+    for part in parts:
+        if "stage" in part or "add" in part:
+            steps.append(Step(tool="git.add_all", args={}))
 
-    if "branch" in cmd:
-        name = "feature/test"
-        words = cmd.split()
-        if "called" in words:
-            name = words[words.index("called") + 1]
-        elif "branch" in words:
-            idx = words.index("branch")
-            if idx + 1 < len(words):
-                name = words[idx + 1]
+        elif "commit" in part:
+            steps.append(
+                Step(
+                    tool="git.commit",
+                    args={"message": extract_message(part)}
+                )
+            )
 
-        steps.append(Step(tool="git.create_branch", args={"name": name}))
+        elif "push" in part:
+            steps.append(Step(tool="git.push", args={}))
 
-    if "stage" in cmd or "add" in cmd:
-        steps.append(Step(tool="git.add_all", args={}))
+        elif "branch" in part:
+            steps.append(
+                Step(
+                    tool="git.create_branch",
+                    args={"name": extract_branch(part)}
+                )
+            )
 
-    if "commit" in cmd:
-        message = "update"
-        if "message" in cmd:
-            message = cmd.split("message")[-1].strip()
-        steps.append(Step(tool="git.commit", args={"message": message}))
-
-    if "push" in cmd:
-        steps.append(Step(tool="git.push", args={}))
+        elif "status" in part:
+            steps.append(Step(tool="git.status", args={}))
 
     if not steps:
         raise ValueError("Could not understand command")
