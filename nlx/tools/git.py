@@ -49,8 +49,9 @@ class GitAddExcept(Tool):
 
     def execute(self, args):
         import subprocess
+        import os
 
-        files = args["files"]
+        exclude_files = set(args["files"])
 
         result = subprocess.run(
             ["git", "ls-files"],
@@ -60,7 +61,14 @@ class GitAddExcept(Tool):
 
         all_files = result.stdout.splitlines()
 
-        to_add = [f for f in all_files if f not in files]
+        # normalize to just filenames
+        def normalize(path):
+            return os.path.basename(path)
+
+        to_add = [
+            f for f in all_files
+            if normalize(f) not in exclude_files
+        ]
 
         return subprocess.run(
             ["git", "add"] + to_add,
