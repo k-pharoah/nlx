@@ -15,3 +15,5 @@ registry = {
     "git.commit": GitCommit(),
     "git.push": GitPush(),
 }
+
+empty = []

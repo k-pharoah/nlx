@@ -55,6 +55,7 @@ Output:
 """
 
 
+
 def parse_command(command: str) -> Plan:
     response = client.chat.completions.create(
         model="gpt-4.1-mini",
