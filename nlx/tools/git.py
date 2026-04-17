@@ -1,6 +1,6 @@
 import subprocess
-import os
 from nlx.tools.base import Tool
+from nlx.utils.files import resolve_files, get_repo_files
 
 
 class GitStatus(Tool):
@@ -32,22 +32,16 @@ class GitAddExcept(Tool):
     name = "git.add_except"
 
     def execute(self, args):
-        exclude_files = set(args["files"])
+        exclude = set(args["files"])
 
-        result = subprocess.run(
-            ["git", "ls-files", "--others", "--modified", "--cached"],
-            capture_output=True,
-            text=True
-        )
+        all_files = get_repo_files()
 
-        all_files = result.stdout.splitlines()
-
-        def normalize(path):
-            return os.path.basename(path)
+        # normalize via resolver logic
+        excluded_resolved = set(resolve_files(exclude))
 
         to_add = [
             f for f in all_files
-            if normalize(f) not in exclude_files
+            if f not in excluded_resolved
         ]
 
         return subprocess.run(
@@ -67,7 +61,7 @@ class GitAddPattern(Tool):
             f'git add {pattern}',
             capture_output=True,
             text=True,
-            shell=True  # needed for *.json on Windows
+            shell=True  # required for *.json on Windows
         )
 
 
@@ -108,29 +102,11 @@ class GitUnstage(Tool):
     name = "git.unstage"
 
     def execute(self, args):
-        import subprocess
-        import os
+        files = args.get("files", [])
 
-        target_files = set(args.get("files", []))
+        matched = resolve_files(files)
 
-        # get tracked files
-        result = subprocess.run(
-            ["git", "ls-files"],
-            capture_output=True,
-            text=True
-        )
-
-        all_files = result.stdout.splitlines()
-
-        def normalize(path):
-            return os.path.basename(path)
-
-        matched_files = [
-            f for f in all_files
-            if normalize(f) in target_files
-        ]
-
-        if not matched_files:
+        if not matched:
             return subprocess.run(
                 ["echo", "No matching files found"],
                 capture_output=True,
@@ -138,7 +114,7 @@ class GitUnstage(Tool):
             )
 
         return subprocess.run(
-            ["git", "reset", "HEAD"] + matched_files,
+            ["git", "reset", "HEAD"] + matched,
             capture_output=True,
             text=True
         )
